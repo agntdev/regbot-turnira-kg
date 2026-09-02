@@ -1,0 +1,20 @@
+[
+  {
+    "name": "Просмотр команд",
+    "steps": [
+      {
+        "expect": [
+          {
+            "method": "sendMessage",
+            "payload": {
+              "text": "Просмотреть список всех команд"
+            }
+          }
+        ],
+        "send": {
+          "callback": "view:teams"
+        }
+      }
+    ]
+  }
+]
