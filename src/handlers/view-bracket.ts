@@ -1,17 +1,8 @@
 import { Composer } from "grammy";
-
-// SCAFFOLD — generated from the bot blueprint BEFORE the agent runs.
-// Keep a LIVE registration (.command / .callbackQuery / …) so this feature is
-// never an empty stub. Replace the reply body with real logic + copy; if you
-// change the user-facing text, update tests/specs to match EXACTLY.
-// Do NOT rewrite src/bot.ts — buildBot() already auto-loads this module.
-// Menu: wire this into /start via registerMainMenuItem({ label: "Турнирная таблица", data: "view:bracket" }) if the toolkit exposes it.
-
-const composer = new Composer();
-
-composer.callbackQuery("view:bracket", async (ctx) => {
-  await ctx.answerCallbackQuery();
-  await ctx.reply("Посмотреть брэкет и список матчей");
-});
-
+import type { Ctx } from "../bot.js";
+import { inlineButton, inlineKeyboard, registerMainMenuItem } from "../toolkit/index.js";
+import { readTournament } from "../tournament-store.js";
+registerMainMenuItem({ label: "Турнирная таблица", data: "view:bracket", order: 30 });
+const composer = new Composer<Ctx>();
+composer.callbackQuery("view:bracket", async (ctx) => { await ctx.answerCallbackQuery(); const state = await readTournament(ctx); const text = state.matches.length ? `Турнирная таблица:\n${state.matches.map((m, i) => `${i + 1}. ${m.teamOne} — ${m.teamTwo}${m.result ? `: ${m.result}` : ""}${m.fightLink ? `\n${m.fightLink}` : ""}`).join("\n")}` : "Турнирная таблица пока не сформирована. Следите за обновлениями."; await ctx.reply(text, { reply_markup: inlineKeyboard([[inlineButton("Просмотр команд", "view:teams")], [inlineButton("В главное меню", "menu:main")]]) }); });
 export default composer;

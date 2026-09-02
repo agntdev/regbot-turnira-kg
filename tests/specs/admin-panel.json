@@ -1,0 +1,11 @@
+[
+  {
+    "name": "панель организатора закрыта без настройки владельца",
+    "steps": [
+      {
+        "send": { "callback": "admin:panel" },
+        "expect": [{ "method": "sendMessage", "payload": { "text": "Owner access isn't set up yet." } }]
+      }
+    ]
+  }
+]
