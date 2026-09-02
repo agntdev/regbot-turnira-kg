@@ -7,7 +7,7 @@ registerMainMenuItem({ label: "Регистрация команды", data: "re
 const composer = new Composer<Ctx>();
 const cancel = inlineKeyboard([[inlineButton("Отмена", "registration:cancel")]]);
 const clean = (value: string) => value.trim();
-const valid = (value: string, min: number, max: number) => value.length >= min && value.length <= max;
+const valid = (value: string, min: number, max: number) => value.length >= min && value.length <= max && !/[\r\n\u0000]/.test(value);
 function reset(ctx: Ctx) { ctx.session.step = undefined; ctx.session.draft = undefined; ctx.session.editingApplicationId = undefined; }
 type CompleteDraft = { name: string; captain: { gameId: string; nickname: string; username?: string; phone?: string }; players: { gameId: string; nickname: string }[] };
 function draft(ctx: Ctx): CompleteDraft | undefined {
@@ -31,6 +31,10 @@ async function notify(ctx: Ctx, app: Application) {
 
 composer.callbackQuery("registration:start", async (ctx) => {
   await ctx.answerCallbackQuery();
+  if (ctx.chat?.type !== "private") {
+    await ctx.reply("Регистрация доступна только в личном чате с ботом, чтобы сохранить данные команды приватными.");
+    return;
+  }
   ctx.session.draft = { captain: {}, players: [] };
   ctx.session.step = "team_name";
   await ctx.reply("Введите название команды.", { reply_markup: { force_reply: true, input_field_placeholder: "Например, Bishkek Wolves" } });
@@ -102,9 +106,13 @@ composer.callbackQuery("registration:confirm", async (ctx) => {
   await ctx.answerCallbackQuery(); const value = draft(ctx);
   if (!value || !ctx.chat) return void await ctx.editMessageText("Не удалось подтвердить заявку. Начните регистрацию заново.", { reply_markup: cancel });
   const state = await readTournament(ctx); const editingId = ctx.session.editingApplicationId; const ids = [value.captain.gameId, ...value.players.map((p) => p.gameId)];
-  const used = state.applications.filter((a) => a.id !== editingId).flatMap((a) => [a.captain.gameId, ...a.players.map((p) => p.gameId)]);
-  const conflictIds = ids.filter((id, index) => ids.indexOf(id) !== index || used.includes(id));
-  const duplicate = state.applications.some((a) => a.id !== editingId && (a.chatId === ctx.chat!.id || a.captain.gameId === value.captain.gameId));
+  const normalized = ids.map((id) => id.toLocaleLowerCase());
+  const used = state.applications
+    .filter((a) => a.id !== editingId)
+    .flatMap((a) => [a.captain.gameId, ...a.players.map((p) => p.gameId)])
+    .map((id) => id.toLocaleLowerCase());
+  const conflictIds = ids.filter((id, index) => normalized.indexOf(normalized[index]) !== index || used.includes(normalized[index]));
+  const duplicate = state.applications.some((a) => a.id !== editingId && (a.chatId === ctx.chat!.id || a.captain.gameId.toLocaleLowerCase() === value.captain.gameId.toLocaleLowerCase()));
   const app: Application = { id: editingId ?? String(state.nextApplication++), name: value.name, captain: value.captain, players: value.players, status: conflictIds.length || duplicate ? "conflict" : "pending", conflictIds: [...new Set(conflictIds)], chatId: ctx.chat.id };
   const oldAt = state.applications.findIndex((a) => a.id === editingId);
   if (oldAt >= 0) state.applications[oldAt] = app; else { state.applications.push(app); state.applicationIds.push(app.id); }

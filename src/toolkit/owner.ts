@@ -48,6 +48,13 @@ function coerceId(value: unknown): string | undefined {
   return undefined;
 }
 
+/** ADMIN_CHAT_ID may contain several organizer chat ids separated by commas. */
+function coerceIds(value: unknown): string[] {
+  if (typeof value === "number" && Number.isFinite(value)) return [String(Math.trunc(value))];
+  if (typeof value !== "string") return [];
+  return value.split(/[\s,;]+/).map((part) => part.trim()).filter((part) => /^-?\d+$/.test(part));
+}
+
 function readAdminFromEnv(
   env: Record<string, unknown> | null | undefined,
 ): string | undefined {
@@ -83,11 +90,12 @@ export function isOwner(ctx: {
   from?: { id: number } | undefined;
   chat?: { id: number } | undefined;
 }): boolean {
-  const admin = adminChatId(ctx);
-  if (admin === undefined) return false;
-  if (ctx.from?.id !== undefined && String(ctx.from.id) === admin) return true;
+  const env = ctx.env ?? nodeProcessEnv();
+  const admins = ADMIN_ID_ENV_KEYS.flatMap((key) => coerceIds(env?.[key]));
+  if (admins.length === 0) return false;
+  if (ctx.from?.id !== undefined && admins.includes(String(ctx.from.id))) return true;
   // Private chats: chat id equals user id — notify targets often use chat id.
-  if (ctx.chat?.id !== undefined && String(ctx.chat.id) === admin) return true;
+  if (ctx.chat?.id !== undefined && admins.includes(String(ctx.chat.id))) return true;
   return false;
 }
 

@@ -36,11 +36,23 @@ composer.on("callback_query:data", async (ctx, next) => {
   await ctx.answerCallbackQuery(); if (!(await owner(ctx))) return;
   const state = await readTournament(ctx); const app = state.applications.find((a) => a.id === match[2]);
   if (!app) return void await ctx.editMessageText("Эта заявка уже недоступна.", { reply_markup: inlineKeyboard(back) });
-  const wasConflict = app.status === "conflict"; app.status = match[1] === "approve" ? "approved" : "rejected"; await writeTournament(ctx, state);
+  if (app.status !== "pending" && app.status !== "conflict") {
+    return void await ctx.editMessageText("По этой заявке уже принято решение.", { reply_markup: inlineKeyboard(back) });
+  }
+  const wasConflict = app.status === "conflict"; app.previousStatus = app.status; app.status = match[1] === "approve" ? "approved" : "rejected"; await writeTournament(ctx, state);
   const decision = app.status === "approved" ? "принята" : "отклонена";
   try { await ctx.api.sendMessage(app.chatId, `Ваша заявка команды «${app.name}» ${decision}.`); } catch { /* Users may block the bot after opting in. */ }
   if (wasConflict) await notifyDecision(ctx, `Конфликт по заявке «${app.name}» решён: заявка ${decision}.`);
-  await ctx.editMessageText(`Заявка команды «${app.name}» ${decision}.`, { reply_markup: inlineKeyboard([[inlineButton("К заявкам", "admin:apps")], ...back]) });
+  await ctx.editMessageText(`Заявка команды «${app.name}» ${decision}.`, { reply_markup: inlineKeyboard([[inlineButton("Отменить решение", `admin:undo:${app.id}`)], [inlineButton("К заявкам", "admin:apps")], ...back]) });
+});
+composer.on("callback_query:data", async (ctx, next) => {
+  const hit = /^admin:undo:(\d+)$/.exec(ctx.callbackQuery.data); if (!hit) return next();
+  await ctx.answerCallbackQuery(); if (!(await owner(ctx))) return;
+  const state = await readTournament(ctx); const app = state.applications.find((item) => item.id === hit[1]);
+  if (!app || !app.previousStatus) return void await ctx.editMessageText("Это решение уже нельзя отменить.", { reply_markup: inlineKeyboard(back) });
+  app.status = app.previousStatus; delete app.previousStatus; await writeTournament(ctx, state);
+  try { await ctx.api.sendMessage(app.chatId, `Решение по заявке команды «${app.name}» отменено. Заявка снова ожидает проверки.`); } catch { /* User may have blocked the bot. */ }
+  await ctx.editMessageText(`Решение по заявке команды «${app.name}» отменено.`, { reply_markup: inlineKeyboard([[inlineButton("К заявкам", "admin:apps")], ...back]) });
 });
 composer.callbackQuery("admin:matches", async (ctx) => { await ctx.answerCallbackQuery(); if (!(await owner(ctx))) return; const state = await readTournament(ctx); await ctx.editMessageText(state.matches.length ? "Выберите матч или добавьте новый." : "Матчей пока нет — добавьте первый.", { reply_markup: inlineKeyboard([[inlineButton("Добавить матч", "admin:match:add")], ...state.matches.map((m) => [inlineButton(`${m.teamOne} — ${m.teamTwo}`, `admin:match:${m.id}`)]), ...back]) }); });
 composer.callbackQuery("admin:match:add", async (ctx) => { await ctx.answerCallbackQuery(); if (!(await owner(ctx))) return; ctx.session.step = "admin_match_team_one"; await ctx.editMessageText("Введите название первой команды."); });
