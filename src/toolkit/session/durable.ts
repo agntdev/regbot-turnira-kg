@@ -51,6 +51,15 @@ interface Reminder {
   text: string;
 }
 
+interface TournamentState {
+  applications: unknown[];
+  applicationIds: string[];
+  matches: unknown[];
+  matchIds: string[];
+  nextApplication: number;
+  nextMatch: number;
+}
+
 /**
  * createDurableSessionStorage — a grammY StorageAdapter that routes each session
  * key to its own ChatDO instance. Pass to buildBot({ storage }) in the Worker.
@@ -152,6 +161,19 @@ export class ChatDO {
       await this.state.storage.put("reminders", list);
       await this.rearm(list);
       return new Response(null, { status: 204 });
+    }
+
+    // One deterministic, bot-wide record for durable domain data. Feature code
+    // maintains explicit ids inside it; this never scans a Redis/DO keyspace.
+    if (url.pathname === "/tournament") {
+      if (request.method === "GET") {
+        const value = await this.state.storage.get<TournamentState>("tournament");
+        return Response.json(value ?? { applications: [], applicationIds: [], matches: [], matchIds: [], nextApplication: 1, nextMatch: 1 });
+      }
+      if (request.method === "PUT") {
+        await this.state.storage.put("tournament", await request.json());
+        return new Response(null, { status: 204 });
+      }
     }
 
     return new Response("not found", { status: 404 });

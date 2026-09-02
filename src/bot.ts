@@ -6,7 +6,16 @@ import type { StorageAdapter } from "grammy";
 // bot grows. Durable domain data must NOT live here — use the toolkit's
 // persistent storage (see AGENTS.md).
 export interface Session {
-  // example: step?: "awaiting_amount";
+  step?: "team_name" | "captain_id" | "captain_nick" | "captain_username" | "captain_phone" | "player_id" | "player_nick" | "admin_match_team_one" | "admin_match_team_two" | "admin_match_result" | "admin_match_link";
+  draft?: {
+    name?: string;
+    captain?: { gameId?: string; nickname?: string; username?: string; phone?: string };
+    players?: { gameId: string; nickname: string }[];
+  };
+  editingMatchId?: string;
+  editingApplicationId?: string;
+  /** Harness-only fallback when no Worker durable binding is available. */
+  localTournament?: unknown;
 }
 
 export type Ctx = BotContext<Session>;

@@ -1,19 +1,56 @@
 [
   {
-    "name": "Регистрация команды",
+    "name": "Регистрация команды с минимальными данными",
     "steps": [
       {
         "expect": [
           {
             "method": "sendMessage",
             "payload": {
-              "text": "Начать регистрацию новой команды"
+              "text": "Введите название команды."
             }
           }
         ],
         "send": {
           "callback": "registration:start"
         }
+      }
+      ,
+      {
+        "send": { "text": "Bishkek Wolves" },
+        "expect": [{ "method": "sendMessage", "payload": { "text": "Введите игровой ID капитана." } }]
+      },
+      {
+        "send": { "text": "captain-1" },
+        "expect": [{ "method": "sendMessage", "payload": { "text": "Введите никнейм капитана." } }]
+      },
+      {
+        "send": { "text": "Aibek" },
+        "expect": [{ "method": "sendMessage", "payload": { "text": "Введите Telegram @username капитана или отправьте «-»." } }]
+      },
+      {
+        "send": { "text": "-" },
+        "expect": [{ "method": "sendMessage", "payload": { "text": "Введите телефон капитана или отправьте «-»." } }]
+      },
+      {
+        "send": { "text": "-" },
+        "expect": [{ "method": "sendMessage", "payload": { "text": "Введите игровой ID первого игрока." } }]
+      },
+      {
+        "send": { "text": "player-1" },
+        "expect": [{ "method": "sendMessage", "payload": { "text": "Введите никнейм игрока." } }]
+      },
+      {
+        "send": { "text": "Bek" },
+        "expect": [{ "method": "sendMessage", "payload": { "text": "Добавьте следующего игрока или завершите список." } }]
+      },
+      {
+        "send": { "callback": "registration:preview" },
+        "expect": [{ "method": "editMessageText", "payload": { "text": "Проверьте заявку:\nКоманда: Bishkek Wolves\nКапитан: Aibek (captain-1)\nИгроков: 1" } }]
+      },
+      {
+        "send": { "callback": "registration:confirm" },
+        "expect": [{ "method": "editMessageText", "payload": { "text": "Заявка отправлена организаторам. Уведомления организаторов пока не настроены." } }]
       }
     ]
   }
