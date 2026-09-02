@@ -9,6 +9,8 @@ export interface Application {
   status: Status;
   conflictIds: string[];
   chatId: number;
+  /** Status before an organizer's last decision; enables a safe undo. */
+  previousStatus?: "pending" | "conflict";
 }
 export interface TournamentMatch { id: string; teamOne: string; teamTwo: string; result?: string; fightLink?: string; }
 export interface TournamentState {
@@ -32,7 +34,12 @@ export async function readTournament(ctx: Ctx): Promise<TournamentState> {
   const remote = workerStore(ctx);
   if (remote) {
     const response = await remote.fetch("https://do/tournament", { method: "GET" });
-    return (await response.json()) as TournamentState;
+    if (!response.ok) throw new Error("Tournament storage is temporarily unavailable");
+    const value = (await response.json()) as Partial<TournamentState>;
+    if (!Array.isArray(value.applications) || !Array.isArray(value.matches)) {
+      throw new Error("Tournament storage returned invalid data");
+    }
+    return value as TournamentState;
   }
   // The harness has no Worker binding. This is deliberately scoped to its
   // ephemeral conversation session; live Workers always take the durable path.
@@ -41,7 +48,8 @@ export async function readTournament(ctx: Ctx): Promise<TournamentState> {
 export async function writeTournament(ctx: Ctx, state: TournamentState): Promise<void> {
   const remote = workerStore(ctx);
   if (remote) {
-    await remote.fetch("https://do/tournament", { method: "PUT", body: JSON.stringify(state) });
+    const response = await remote.fetch("https://do/tournament", { method: "PUT", body: JSON.stringify(state) });
+    if (!response.ok) throw new Error("Tournament storage is temporarily unavailable");
     return;
   }
   ctx.session.localTournament = state;

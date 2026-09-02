@@ -1,5 +1,18 @@
 [
   {
+    "name": "Регистрация не принимает перенос строки в названии",
+    "steps": [
+      {
+        "send": { "callback": "registration:start" },
+        "expect": [{ "method": "sendMessage", "payload": { "text": "Введите название команды." } }]
+      },
+      {
+        "send": { "text": "Bishkek\nWolves" },
+        "expect": [{ "method": "sendMessage", "payload": { "text": "Название должно содержать от 2 до 40 символов. Попробуйте ещё раз." } }]
+      }
+    ]
+  },
+  {
     "name": "Регистрация команды с минимальными данными",
     "steps": [
       {
